@@ -3,220 +3,239 @@ package hierarcy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class HierarchyMapperTest {
 
     @Test
-    @DisplayName("Test case 1: Simple full-depth tree")
-    void testSimpleFullDepthTree() {
-        // BAC (1) -> AC (2) -> SC (3) -> SL (4 - Leaf)
-        var sl4 = new Node(401, Tier.SL);
-        var sc3 = new Node(301, Tier.SC, sl4);
-        var ac2 = new Node(201, Tier.AC, sc3);
-        var bac1 = new Node(101, Tier.BAC, ac2);
+    @DisplayName("Test case 1: Simple full-depth tree with instruments")
+    void testSimpleFullDepthTreeWithInstruments() {
+        // BAC (1) -> AC (2) -> SC (3) -> SL (4 - with instruments)
+        var guitar = new Instrument("Guitar");
+        var piano = new Instrument("Piano");
+
+        var sl4 = new Node(401, Tier.SL, List.of(guitar, piano));
+        var sc3 = new Node(301, Tier.SC, List.of(), sl4);
+        var ac2 = new Node(201, Tier.AC, List.of(), sc3);
+        var bac1 = new Node(101, Tier.BAC, List.of(), ac2);
 
         var mapper = new HierarchyMapper();
-        var result = mapper.mapLeavesToAncestors(bac1);
+        var result = mapper.mapInstrumentsToHierarchy(bac1);
 
-        assertEquals(1, result.size());
-        assertTrue(result.containsKey(401));
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey(guitar));
+        assertTrue(result.containsKey(piano));
 
-        var mapping = result.get(401);
-        assertEquals(101, mapping.bacNodeId());
-        assertEquals(201, mapping.acNodeId());
-        assertEquals(301, mapping.scNodeId());
-        assertEquals(401, mapping.slNodeId());
+        var guitarHierarchy = result.get(guitar);
+        assertEquals(101, guitarHierarchy.bacNodeId());
+        assertEquals(201, guitarHierarchy.acNodeId());
+        assertEquals(301, guitarHierarchy.scNodeId());
+        assertEquals(401, guitarHierarchy.slNodeId());
+
+        var pianoHierarchy = result.get(piano);
+        assertEquals(101, pianoHierarchy.bacNodeId());
+        assertEquals(201, pianoHierarchy.acNodeId());
+        assertEquals(301, pianoHierarchy.scNodeId());
+        assertEquals(401, pianoHierarchy.slNodeId());
     }
 
     @Test
-    @DisplayName("Test case 2: Tree with multiple branches and leaves")
-    void testTreeWithMultipleBranches() {
+    @DisplayName("Test case 2: Tree with instruments at different levels")
+    void testTreeWithInstrumentsAtDifferentLevels() {
         // Structure:
-        // BAC_1 -> AC_1 -> SC_1 -> SL_1 (Leaf)
-        //                -> SC_2 -> SL_2 (Leaf)
-        //        -> AC_2 -> SC_3 -> SL_3 (Leaf)
-        // BAC_2 -> AC_3 -> SL_4 (Leaf - SC tier skipped)
-        //        -> SC_4 -> SL_5 (Leaf)
-        //        -> SC_5 (Leaf - SL tier missing)
+        // BAC_1 [violin] -> AC_1 [drums] -> SC_1 -> SL_1 [guitar]
+        //                                -> SC_2 [piano] -> SL_2 [flute]
 
-        var sl1 = new Node(411, Tier.SL);
-        var sl2 = new Node(422, Tier.SL);
-        var sc1 = new Node(311, Tier.SC, sl1);
-        var sc2 = new Node(322, Tier.SC, sl2);
-        var ac1 = new Node(211, Tier.AC, sc1, sc2);
+        var violin = new Instrument("Violin");
+        var drums = new Instrument("Drums");
+        var guitar = new Instrument("Guitar");
+        var piano = new Instrument("Piano");
+        var flute = new Instrument("Flute");
 
-        var sl3 = new Node(433, Tier.SL);
-        var sc3 = new Node(333, Tier.SC, sl3);
-        var ac2 = new Node(222, Tier.AC, sc3);
-        var bac1 = new Node(111, Tier.BAC, ac1, ac2);
-
-        var sl4 = new Node(444, Tier.SL); // Leaf under AC, skipping SC tier
-        var sl5 = new Node(455, Tier.SL);
-        var sc4 = new Node(344, Tier.SC, sl5);
-        var sc5 = new Node(355, Tier.SC); // SC node is a leaf (leafNode = true)
-        var ac3 = new Node(233, Tier.AC, sl4, sc4, sc5);
-        var bac2 = new Node(122, Tier.BAC, ac3);
+        var sl1 = new Node(411, Tier.SL, List.of(guitar));
+        var sl2 = new Node(422, Tier.SL, List.of(flute));
+        var sc1 = new Node(311, Tier.SC, List.of(), sl1);
+        var sc2 = new Node(322, Tier.SC, List.of(piano), sl2);
+        var ac1 = new Node(211, Tier.AC, List.of(drums), sc1, sc2);
+        var bac1 = new Node(111, Tier.BAC, List.of(violin), ac1);
 
         var mapper = new HierarchyMapper();
-        var result1 = mapper.mapLeavesToAncestors(bac1);
+        var result = mapper.mapInstrumentsToHierarchy(bac1);
 
-        assertEquals(3, result1.size());
-        assertTrue(result1.containsKey(411));
-        assertTrue(result1.containsKey(422));
-        assertTrue(result1.containsKey(433));
+        assertEquals(5, result.size());
 
-        // Check SL_1 (411)
-        var mapping411 = result1.get(411);
-        assertEquals(111, mapping411.bacNodeId());
-        assertEquals(211, mapping411.acNodeId());
-        assertEquals(311, mapping411.scNodeId());
-        assertEquals(411, mapping411.slNodeId());
+        // Check violin (at BAC level)
+        var violinHierarchy = result.get(violin);
+        assertEquals(111, violinHierarchy.bacNodeId());
+        assertNull(violinHierarchy.acNodeId());
+        assertNull(violinHierarchy.scNodeId());
+        assertNull(violinHierarchy.slNodeId());
 
-        // Check SL_2 (422)
-        var mapping422 = result1.get(422);
-        assertEquals(111, mapping422.bacNodeId());
-        assertEquals(211, mapping422.acNodeId());
-        assertEquals(322, mapping422.scNodeId());
-        assertEquals(422, mapping422.slNodeId());
+        // Check drums (at AC level)
+        var drumsHierarchy = result.get(drums);
+        assertEquals(111, drumsHierarchy.bacNodeId());
+        assertEquals(211, drumsHierarchy.acNodeId());
+        assertNull(drumsHierarchy.scNodeId());
+        assertNull(drumsHierarchy.slNodeId());
 
-        // Check SL_3 (433)
-        var mapping433 = result1.get(433);
-        assertEquals(111, mapping433.bacNodeId());
-        assertEquals(222, mapping433.acNodeId());
-        assertEquals(333, mapping433.scNodeId());
-        assertEquals(433, mapping433.slNodeId());
+        // Check guitar (at SL level through SC1)
+        var guitarHierarchy = result.get(guitar);
+        assertEquals(111, guitarHierarchy.bacNodeId());
+        assertEquals(211, guitarHierarchy.acNodeId());
+        assertEquals(311, guitarHierarchy.scNodeId());
+        assertEquals(411, guitarHierarchy.slNodeId());
 
-        // Now test the second BAC tree (bac2)
-        var result2 = mapper.mapLeavesToAncestors(bac2);
+        // Check piano (at SC level)
+        var pianoHierarchy = result.get(piano);
+        assertEquals(111, pianoHierarchy.bacNodeId());
+        assertEquals(211, pianoHierarchy.acNodeId());
+        assertEquals(322, pianoHierarchy.scNodeId());
+        assertNull(pianoHierarchy.slNodeId());
 
-        assertEquals(3, result2.size());
-        assertTrue(result2.containsKey(444));
-        assertTrue(result2.containsKey(455));
-        assertTrue(result2.containsKey(355)); // Check for the SC leaf
-
-        // Check SL_4 (444 - SC tier skipped)
-        var mapping444 = result2.get(444);
-        assertEquals(122, mapping444.bacNodeId());
-        assertEquals(233, mapping444.acNodeId());
-        assertNull(mapping444.scNodeId());
-        assertEquals(444, mapping444.slNodeId());
-
-        // Check SL_5 (455)
-        var mapping455 = result2.get(455);
-        assertEquals(122, mapping455.bacNodeId());
-        assertEquals(233, mapping455.acNodeId());
-        assertEquals(344, mapping455.scNodeId());
-        assertEquals(455, mapping455.slNodeId());
-
-        // Check SC_5 (355 - SC node is a leaf)
-        var mapping355 = result2.get(355);
-        assertEquals(122, mapping355.bacNodeId());
-        assertEquals(233, mapping355.acNodeId());
-        assertEquals(355, mapping355.scNodeId()); // SC ancestor should be 355 (the leaf itself)
-        assertNull(mapping355.slNodeId());
+        // Check flute (at SL level through SC2)
+        var fluteHierarchy = result.get(flute);
+        assertEquals(111, fluteHierarchy.bacNodeId());
+        assertEquals(211, fluteHierarchy.acNodeId());
+        assertEquals(322, fluteHierarchy.scNodeId());
+        assertEquals(422, fluteHierarchy.slNodeId());
     }
 
     @Test
-    @DisplayName("Test case 3: Leaf node is AC")
-    void testLeafIsAC() {
-        // BAC (1) -> AC (2 - Leaf)
-        var ac2 = new Node(202, Tier.AC);
-        var bac1 = new Node(102, Tier.BAC, ac2);
+    @DisplayName("Test case 3: Multiple instruments in single node")
+    void testMultipleInstrumentsInSingleNode() {
+        // BAC (1 - with multiple instruments)
+        var guitar = new Instrument("Guitar");
+        var piano = new Instrument("Piano");
+        var drums = new Instrument("Drums");
+
+        var bac1 = new Node(103, Tier.BAC, List.of(guitar, piano, drums));
 
         var mapper = new HierarchyMapper();
-        var result = mapper.mapLeavesToAncestors(bac1);
+        var result = mapper.mapInstrumentsToHierarchy(bac1);
 
-        assertEquals(1, result.size());
-        assertTrue(result.containsKey(202));
+        assertEquals(3, result.size());
 
-        var mapping = result.get(202);
-        assertEquals(102, mapping.bacNodeId());
-        assertEquals(202, mapping.acNodeId()); // AC ancestor should be 202 (the leaf itself)
-        assertNull(mapping.scNodeId());
-        assertNull(mapping.slNodeId());
+        for (var instrument : List.of(guitar, piano, drums)) {
+            assertTrue(result.containsKey(instrument));
+            var hierarchy = result.get(instrument);
+            assertEquals(103, hierarchy.bacNodeId());
+            assertNull(hierarchy.acNodeId());
+            assertNull(hierarchy.scNodeId());
+            assertNull(hierarchy.slNodeId());
+        }
     }
 
     @Test
-    @DisplayName("Test case 4: Leaf node is BAC (the root)")
-    void testLeafIsBAC() {
-        // BAC (1 - Leaf)
-        var bac1 = new Node(103, Tier.BAC);
+    @DisplayName("Test case 4: Tree with skipped SC tier")
+    void testTreeWithSkippedTier() {
+        // BAC -> AC -> SL (SC tier skipped)
+        var trumpet = new Instrument("Trumpet");
+
+        var sl4 = new Node(444, Tier.SL, List.of(trumpet));
+        var ac3 = new Node(233, Tier.AC, List.of(), sl4);
+        var bac2 = new Node(122, Tier.BAC, List.of(), ac3);
 
         var mapper = new HierarchyMapper();
-        var result = mapper.mapLeavesToAncestors(bac1);
+        var result = mapper.mapInstrumentsToHierarchy(bac2);
 
         assertEquals(1, result.size());
-        assertTrue(result.containsKey(103));
+        assertTrue(result.containsKey(trumpet));
 
-        var mapping = result.get(103);
-        assertEquals(103, mapping.bacNodeId()); // BAC ancestor should be 103 (the leaf itself)
-        assertNull(mapping.acNodeId());
-        assertNull(mapping.scNodeId());
-        assertNull(mapping.slNodeId());
+        var trumpetHierarchy = result.get(trumpet);
+        assertEquals(122, trumpetHierarchy.bacNodeId());
+        assertEquals(233, trumpetHierarchy.acNodeId());
+        assertNull(trumpetHierarchy.scNodeId());
+        assertEquals(444, trumpetHierarchy.slNodeId());
     }
 
     @Test
     @DisplayName("Test case 5: Empty tree (null root)")
     void testEmptyTreeNullRoot() {
         var mapper = new HierarchyMapper();
-        var result = mapper.mapLeavesToAncestors(null);
+        var result = mapper.mapInstrumentsToHierarchy(null);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        // Ensure it's an immutable map (optional but good practice when using Map.of())
-        assertThrows(UnsupportedOperationException.class, () -> result.put(1, new Hierarchy(null, null, null, null)));
     }
 
     @Test
-    @DisplayName("Test case 6: Tree with a single BAC node that is a leaf (explicitly empty children)")
-    void testSingleBACLeafWithEmptyChildren() {
-        // BAC (1 - Leaf)
-        var bac1 = new Node(104, Tier.BAC);
+    @DisplayName("Test case 6: Tree with no instruments")
+    void testTreeWithNoInstruments() {
+        // BAC -> AC -> SC -> SL (no instruments anywhere)
+        var sl4 = new Node(401, Tier.SL, List.of());
+        var sc3 = new Node(301, Tier.SC, List.of(), sl4);
+        var ac2 = new Node(201, Tier.AC, List.of(), sc3);
+        var bac1 = new Node(101, Tier.BAC, List.of(), ac2);
 
         var mapper = new HierarchyMapper();
-        var result = mapper.mapLeavesToAncestors(bac1);
+        var result = mapper.mapInstrumentsToHierarchy(bac1);
 
-        assertEquals(1, result.size());
-        assertTrue(result.containsKey(104));
-
-        var mapping = result.get(104);
-        assertEquals(104, mapping.bacNodeId());
-        assertNull(mapping.acNodeId());
-        assertNull(mapping.scNodeId());
-        assertNull(mapping.slNodeId());
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    @DisplayName("Test case 7: Tree with a branch where a node has null children (is a leaf)")
-    void testNodeWithNullChildren() {
-        // BAC -> AC -> SC -> SL (Leaf)
-        //        -> SC_null (Leaf with null children)
-        var sl4 = new Node(401, Tier.SL);
-        var sc3 = new Node(301, Tier.SC, sl4);
-        var scNull = new Node(305, Tier.SC);
-        var ac2 = new Node(201, Tier.AC, sc3, scNull);
-        var bac1 = new Node(101, Tier.BAC, ac2);
+    @DisplayName("Test case 7: Complex tree with mixed instrument placement")
+    void testComplexTreeWithMixedInstrumentPlacement() {
+        // BAC_1 [violin] -> AC_1 -> SC_1 [piano] -> SL_1 [guitar]
+        //                         -> SC_2 -> SL_2 [drums]
+        //                 -> AC_2 [flute] -> SC_3 [trumpet]
+
+        var violin = new Instrument("Violin");
+        var piano = new Instrument("Piano");
+        var guitar = new Instrument("Guitar");
+        var drums = new Instrument("Drums");
+        var flute = new Instrument("Flute");
+        var trumpet = new Instrument("Trumpet");
+
+        var sl1 = new Node(411, Tier.SL, List.of(guitar));
+        var sl2 = new Node(422, Tier.SL, List.of(drums));
+        var sc1 = new Node(311, Tier.SC, List.of(piano), sl1);
+        var sc2 = new Node(322, Tier.SC, List.of(), sl2);
+        var sc3 = new Node(333, Tier.SC, List.of(trumpet));
+        var ac1 = new Node(211, Tier.AC, List.of(), sc1, sc2);
+        var ac2 = new Node(222, Tier.AC, List.of(flute), sc3);
+        var bac1 = new Node(111, Tier.BAC, List.of(violin), ac1, ac2);
 
         var mapper = new HierarchyMapper();
-        var result = mapper.mapLeavesToAncestors(bac1);
+        var result = mapper.mapInstrumentsToHierarchy(bac1);
 
-        assertEquals(2, result.size());
-        assertTrue(result.containsKey(401));
-        assertTrue(result.containsKey(305));
+        assertEquals(6, result.size());
 
-        // Check leaf 401
-        var mapping401 = result.get(401);
-        assertEquals(101, mapping401.bacNodeId());
-        assertEquals(201, mapping401.acNodeId());
-        assertEquals(301, mapping401.scNodeId());
-        assertEquals(401, mapping401.slNodeId());
+        var violinHierarchy = result.get(violin);
+        assertEquals(111, violinHierarchy.bacNodeId());
+        assertNull(violinHierarchy.acNodeId());
 
-        // Check leaf 305 (SC leaf with no children)
-        var mapping305 = result.get(305);
-        assertEquals(101, mapping305.bacNodeId());
-        assertEquals(201, mapping305.acNodeId());
-        assertEquals(305, mapping305.scNodeId()); // SC ancestor should be 305 (the leaf itself)
-        assertNull(mapping305.slNodeId());
+        var pianoHierarchy = result.get(piano);
+        assertEquals(111, pianoHierarchy.bacNodeId());
+        assertEquals(211, pianoHierarchy.acNodeId());
+        assertEquals(311, pianoHierarchy.scNodeId());
+        assertNull(pianoHierarchy.slNodeId());
+
+        var guitarHierarchy = result.get(guitar);
+        assertEquals(111, guitarHierarchy.bacNodeId());
+        assertEquals(211, guitarHierarchy.acNodeId());
+        assertEquals(311, guitarHierarchy.scNodeId());
+        assertEquals(411, guitarHierarchy.slNodeId());
+
+        var drumsHierarchy = result.get(drums);
+        assertEquals(111, drumsHierarchy.bacNodeId());
+        assertEquals(211, drumsHierarchy.acNodeId());
+        assertEquals(322, drumsHierarchy.scNodeId());
+        assertEquals(422, drumsHierarchy.slNodeId());
+
+        var fluteHierarchy = result.get(flute);
+        assertEquals(111, fluteHierarchy.bacNodeId());
+        assertEquals(222, fluteHierarchy.acNodeId());
+        assertNull(fluteHierarchy.scNodeId());
+        assertNull(fluteHierarchy.slNodeId());
+
+        var trumpetHierarchy = result.get(trumpet);
+        assertEquals(111, trumpetHierarchy.bacNodeId());
+        assertEquals(222, trumpetHierarchy.acNodeId());
+        assertEquals(333, trumpetHierarchy.scNodeId());
+        assertNull(trumpetHierarchy.slNodeId());
     }
 }

@@ -6,22 +6,25 @@ import java.util.List;
 import java.util.Map;
 
 public class HierarchyMapper {
-
-    public Map<Integer, Hierarchy> mapLeavesToAncestors(Node root) {
+    public Map<Instrument, Hierarchy> mapInstrumentsToHierarchy(Node root) {
         if (root == null) {
             return Map.of();
         }
 
-        var result = new HashMap<Integer, Hierarchy>();
+        var result = new HashMap<Instrument, Hierarchy>();
         var currentPath = new LinkedList<Node>();
-        findLeavesAndMapAncestors(root, currentPath, result);
+        findInstrumentsAndMapHierarchy(root, currentPath, result);
         return result;
     }
 
-    private void findLeavesAndMapAncestors(Node currentNode, List<Node> currentPath, Map<Integer, Hierarchy> result) {
+    private void findInstrumentsAndMapHierarchy(
+            Node currentNode,
+            List<Node> currentPath,
+            Map<Instrument, Hierarchy> result
+    ) {
         currentPath.add(currentNode);
 
-        if (currentNode.leafNode()) {
+        if (currentNode.instruments() != null && !currentNode.instruments().isEmpty()) {
             Integer bacId = null;
             Integer acId = null;
             Integer scId = null;
@@ -30,20 +33,22 @@ public class HierarchyMapper {
             for (var nodeOnPath : currentPath) {
                 switch (nodeOnPath.tier()) {
                     case BAC -> bacId = nodeOnPath.id();
-                    case AC  -> acId  = nodeOnPath.id();
-                    case SC  -> scId  = nodeOnPath.id();
-                    case SL  -> slId  = nodeOnPath.id();
+                    case AC -> acId = nodeOnPath.id();
+                    case SC -> scId = nodeOnPath.id();
+                    case SL -> slId = nodeOnPath.id();
                 }
             }
 
-            result.put(currentNode.id(), new Hierarchy(bacId, acId, scId, slId));
+            Hierarchy hierarchy = new Hierarchy(bacId, acId, scId, slId);
 
-        } else {
-            // Not a leaf, recurse into children
-            if (currentNode.children() != null && !currentNode.children().isEmpty()) {
-                for (var child : currentNode.children()) {
-                    findLeavesAndMapAncestors(child, currentPath, result);
-                }
+            for (Instrument instrument : currentNode.instruments()) {
+                result.put(instrument, hierarchy);
+            }
+        }
+
+        if (currentNode.children() != null && !currentNode.children().isEmpty()) {
+            for (var child : currentNode.children()) {
+                findInstrumentsAndMapHierarchy(child, currentPath, result);
             }
         }
 
